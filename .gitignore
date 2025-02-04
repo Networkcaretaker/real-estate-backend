@@ -13,11 +13,6 @@ __pycache__/
 # VS Code
 .vscode/
 
-# React
-frontend/node_modules/
-frontend/build/
-frontend/.env
-
 # Setup Data
-setup_data/
 firebase-serviceAccount.json
+properties.csv
