@@ -16,3 +16,4 @@ __pycache__/
 # Setup Data
 firebase-serviceAccount.json
 properties.csv
+real-estate-firebase-serviceAccount.json
