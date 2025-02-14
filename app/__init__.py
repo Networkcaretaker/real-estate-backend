@@ -25,6 +25,9 @@ def create_app():
 
     from .routes import images
     app.register_blueprint(images.bp)
+
+    from .routes import ai_routes
+    app.register_blueprint(ai_routes, url_prefix='/api/ai')
     
     @app.route('/')
     def root():

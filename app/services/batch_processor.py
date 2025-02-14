@@ -122,7 +122,7 @@ class BatchPropertyProcessor:
             Tuple of (is_valid: bool, missing_columns: List[str])
         """
         required_columns = {
-            'id', 'title', 'description', 'type',
+            'id', 'title', 'description', 'property_type',
             'price', 'country', 'region', 'municipality', 'town',
             'postcode', 'features'
         }

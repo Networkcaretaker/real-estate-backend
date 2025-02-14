@@ -26,6 +26,7 @@ class DataPipeline:
 
             # Transform data to our schema
             property_data = {
+                "property_id": crm_data.get('id'),
                 "title": crm_data.get("title", ""),
                 "description": crm_data.get("description", ""),
                 "excerpt": crm_data.get("excerpt", ""),
@@ -36,7 +37,7 @@ class DataPipeline:
                     "region": crm_data.get("region", ""),
                     "municipality": crm_data.get("municipality", ""),
                     "town": crm_data.get("town", ""),
-                    "postcode": crm_data.get("postcode", "")
+                    "postcode": str(crm_data.get("postcode", ""))
                 },
                 "details": {
                     "property_type": crm_data.get("property_type", ""),
@@ -53,9 +54,7 @@ class DataPipeline:
                     "reduced": False
                 },
                 "media": {
-                    "feature_image_id": None,
-                    "interior_image_ids": [],
-                    "exterior_image_ids": []
+                    "feature_image_id": None
                 }
             }
 
