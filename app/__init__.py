@@ -22,6 +22,12 @@ def create_app():
     # Register blueprints
     from app.routes.webhook import webhook
     app.register_blueprint(webhook, url_prefix='/webhook')
+
+    from .routes import images
+    app.register_blueprint(images.bp)
+
+    from .routes import ai_routes
+    app.register_blueprint(ai_routes, url_prefix='/api/ai')
     
     @app.route('/')
     def root():

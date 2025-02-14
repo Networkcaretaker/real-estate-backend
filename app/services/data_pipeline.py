@@ -1,12 +1,14 @@
 from typing import Dict, Any
 import structlog
 from app.services.firebase import FirebaseService
+from app.services.feature_processor import FeatureProcessor
 
 logger = structlog.get_logger(__name__)
 
 class DataPipeline:
     def __init__(self):
         self.firebase = FirebaseService()
+        self.feature_processor = FeatureProcessor()
         self.logger = logger.bind(service="data_pipeline")
 
     def process_property_data(self, crm_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -15,44 +17,44 @@ class DataPipeline:
             self.logger.info("processing_property_data", 
                            property_id=crm_data.get('id'))
 
+            # Process features first
+            features = self.feature_processor.process_features(crm_data)
+            
+            # Validate processed features
+            if not self.feature_processor.validate_features(features):
+                raise ValueError("Invalid feature structure detected")
+
             # Transform data to our schema
             property_data = {
+                "property_id": crm_data.get('id'),
                 "title": crm_data.get("title", ""),
                 "description": crm_data.get("description", ""),
                 "excerpt": crm_data.get("excerpt", ""),
                 "price": float(crm_data.get("price", 0)),
                 "website_status": "disabled",
                 "location": {
-                       "country": crm_data.get("country", ""),
-                       "region": crm_data.get("region", ""),
-                       "municipality": crm_data.get("municipality", ""),
-                       "town": crm_data.get("town", ""),
-                       "postcode": crm_data.get("postcode", "")
+                    "country": crm_data.get("country", ""),
+                    "region": crm_data.get("region", ""),
+                    "municipality": crm_data.get("municipality", ""),
+                    "town": crm_data.get("town", ""),
+                    "postcode": str(crm_data.get("postcode", ""))
                 },
                 "details": {
-                       "property_type": crm_data.get("property_type", ""),
-                       "area_plot": crm_data.get("area_plot", ""),
-                       "area_property": crm_data.get("area_property", "")
+                    "property_type": crm_data.get("property_type", ""),
+                    "area_plot": crm_data.get("area_plot", ""),
+                    "area_property": crm_data.get("area_property", "")
                 },
                 "rooms": {
-                       "bedrooms": crm_data.get("bedrooms", ""),
-                       "bathrooms": crm_data.get("bathrooms", "")
+                    "bedrooms": crm_data.get("bedrooms", ""),
+                    "bathrooms": crm_data.get("bathrooms", "")
                 },
-                "features": {
-                       "interior": [],
-                       "exterior": [],
-                       "luxury": [],
-                       "aminites": [],
-                       "utilities": []
-                },
+                "features": features,  # Use processed features
                 "flags": {
-                       "sold": False,
-                       "reduced": False
+                    "sold": False,
+                    "reduced": False
                 },
                 "media": {
-                       "feature_image_id": None,
-                       "interior_image_ids": [],
-                       "exterior_image_ids": []
+                    "feature_image_id": None
                 }
             }
 
@@ -69,6 +71,14 @@ class DataPipeline:
             )
             
             return result
+
+        except ValueError as ve:
+            self.logger.error(
+                "property_data_validation_error",
+                property_id=crm_data.get('id'),
+                error=str(ve)
+            )
+            raise
 
         except Exception as e:
             self.logger.error(
