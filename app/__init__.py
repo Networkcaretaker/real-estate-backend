@@ -9,7 +9,18 @@ def create_app():
     app = Flask(__name__)
     
     # Initialize CORS
-    CORS(app)
+    CORS(app, resources={
+        r"/*": {
+            "origins": "*",
+            "allow_headers": [
+                "Content-Type", 
+                "Authorization", 
+                "Access-Control-Allow-Credentials"
+            ],
+            "supports_credentials": True,
+            "methods": ["OPTIONS", "GET", "POST", "PUT", "DELETE"]
+        }
+    })
     
     # Initialize Firebase
     try:
@@ -27,7 +38,7 @@ def create_app():
     app.register_blueprint(images.bp)
 
     from .routes import ai_routes
-    app.register_blueprint(ai_routes, url_prefix='/api/ai')
+    app.register_blueprint(ai_routes.ai_bp, url_prefix='/api/ai')
     
     @app.route('/')
     def root():

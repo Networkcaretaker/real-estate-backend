@@ -1,50 +1,46 @@
 from flask import Blueprint, request, jsonify
+from flask_cors import cross_origin
 from app.services.ai_service import AIService
 from app.utils.errors import error_handler
-from functools import wraps
 import structlog
-from app.routes.webhook import requires_auth  # Import the auth decorator
 
-# Initialize logger
 logger = structlog.get_logger(__name__)
 
-# Create blueprint
-ai_routes = Blueprint('ai', __name__)
+ai_bp = Blueprint('ai', __name__)
 
-@ai_routes.route('/analyze-image', methods=['POST'])
-@requires_auth
+@ai_bp.route('/analyze-image', methods=['POST', 'OPTIONS'])
+@cross_origin(
+    origins=['http://localhost:5173', 'http://127.0.0.1:5173'],
+    methods=['POST', 'OPTIONS'],
+    allow_headers=['Content-Type', 'Authorization']
+)
 @error_handler
-async def analyze_image():
-    """Handle image analysis requests"""
+def analyze_image():
     try:
-        logger.info("image_analysis_request_received",
-                   content_type=request.content_type)
+        logger.info("Received AI analysis request")
         
+        # Validate JSON input
         if not request.is_json:
+            logger.error("Invalid request: Not JSON")
             return jsonify({
-                'status': 'error',
-                'message': 'Content-Type must be application/json'
+                'status': 'error', 
+                'message': 'Invalid request format'
             }), 400
 
+        # Parse request data
         data = request.json
-        required_fields = ['property_id', 'image_id', 'versions']  # Updated required fields
+        required_fields = ['property_id', 'image_id', 'versions']
         
         if not all(field in data for field in required_fields):
+            logger.error("Missing required fields", data=data)
             return jsonify({
                 'status': 'error',
                 'message': f'Missing required fields: {", ".join(required_fields)}'
             }), 400
 
-        # Validate versions
-        valid_versions = ["professional", "luxury", "concise", "funny", "call to action"]
-        if not all(version in valid_versions for version in data['versions']):
-            return jsonify({
-                'status': 'error',
-                'message': f'Invalid versions. Must be one of: {", ".join(valid_versions)}'
-            }), 400
-
+        # Process AI analysis (now a synchronous call)
         ai_service = AIService()
-        versions = await ai_service.analyze_property_image(
+        versions = ai_service.analyze_property_image(
             data['property_id'],
             data['image_id'],
             data['versions']
@@ -58,7 +54,8 @@ async def analyze_image():
         }), 200
 
     except Exception as e:
-        logger.error("image_analysis_error", 
-                    error=str(e),
-                    exc_info=True)
-        raise
+        logger.error("AI analysis error", error=str(e), exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
