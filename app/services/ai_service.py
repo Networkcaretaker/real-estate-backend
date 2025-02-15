@@ -96,7 +96,7 @@ Respond in JSON format with an array of objects containing:
                             error=str(e))
             raise ValueError(f"AI request failed: {str(e)}")
 
-    async def analyze_property_image(
+    def analyze_property_image(
         self,
         property_id: str,
         image_id: str,
