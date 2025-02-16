@@ -129,7 +129,6 @@ Respond in JSON format with an array of objects containing:
 
             # Save results to image ai_meta in firebase
             self.firebase.update_image_ai_meta(property_id, image_id, response)
-            
             return response
 
         except Exception as e:

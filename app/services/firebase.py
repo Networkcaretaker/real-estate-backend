@@ -159,26 +159,13 @@ class FirebaseService:
             if not image_doc.exists:
                 raise ValueError(f"Image not found: {image_id}")
                 
-            current_data = image_doc.to_dict()
-            current_responses = current_data.get('ai_meta', {}).get('responses', [])
-            
-            # Create new response entry with current timestamp
             current_time = datetime.now().isoformat()
-            new_response = {
-                'timestamp': current_time,
-                'versions': ai_response
-            }
             
-            # Add new response at the beginning and limit to 3
-            updated_responses = [new_response] + current_responses
-            if len(updated_responses) > 3:
-                updated_responses = updated_responses[:3]
-                
             # Simple update with merge
             image_ref.set({
                 'ai_meta': {
                     'last_generated': current_time,
-                    'responses': updated_responses
+                    'responses': ai_response
                 }
             }, merge=True)
             
