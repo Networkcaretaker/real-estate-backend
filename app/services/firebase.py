@@ -160,12 +160,20 @@ class FirebaseService:
                 raise ValueError(f"Image not found: {image_id}")
                 
             current_time = datetime.now().isoformat()
+
+            # Get existing responses or start with an empty list
+            current_data = image_doc.to_dict()
+            current_responses = current_data.get('ai_meta', {}).get('responses', [])
+
+
+            # Add new response at the beginning of the list
+            updated_responses = ai_response + current_responses
             
             # Simple update with merge
             image_ref.set({
                 'ai_meta': {
                     'last_generated': current_time,
-                    'responses': ai_response
+                    'responses': updated_responses
                 }
             }, merge=True)
             
