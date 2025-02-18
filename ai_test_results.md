@@ -164,3 +164,89 @@ content = f'As a high-end real estate image specialist, analyze this property im
   }
 ]
 ```
+
+# PROPERTY TEST 1
+## Content:
+```python
+summary = "This beautiful 3 bedroom home is located in the heart of the city. It features a spacious living room, modern kitchen, and a large backyard with a pool."
+versions = ["professional", "funny", "call to action"]
+feature_image = "property.jpg"
+propertyType = "Villa"
+propertyLocation = "Santa Ponsa, Calvia"
+price = 3500000
+bedrooms = 5
+bathrooms =4
+plotArea = "800 m2"
+propertyArea = "400 m2"
+interior_features = None
+exterior_features = None
+
+image = PIL.Image.open(feature_image)
+
+propertyData = {
+    "Type": propertyType,
+    "Location": propertyLocation,
+    "price": price,
+    "bedrooms": bedrooms,
+    "bathrooms": bathrooms,
+    "plotArea": plotArea,
+    "propertyArea": propertyArea
+}
+
+content = f'''As a high-end real estate specialist, analyze this {propertyType} in {propertyLocation} and provide a professional, SEO-optimized title, description and excerpt.
+
+Use the Image, Property Summary and the Property Data provided.
+Highlights key selling points. Uses real estate industry standard terminology.
+Incorporate relevant keywords naturally.
+Maintain a professional tone.
+Provide a responce using the selected tone for each of the requested Versions .
+
+Property Summary: {summary}
+Property Data: {propertyData}
+Versions: {versions}
+
+Respond in JSON format with the following infomation for each version:
+"version": "version type",
+"title": "Brief, compelling title (max 80 chars)",
+"description": "Detailed description of the property (max 1200 chars)",
+"excerpt": "SEO optimized summary of the property, focus on key selling points (max 300 chars)"
+
+Property Description Notes
+The opening section should focus on the location.
+The next section should focus on the property.
+The final section should focus on features and key selling points.
+'''
+
+client = genai.Client(api_key=os.getenv('GOOGLE_AI_API_KEY'))
+response = client.models.generate_content(
+    model="gemini-2.0-flash", 
+    contents=[content, image]
+)
+print(response.text)
+```
+
+## Response:
+```json
+{
+  "versions": [
+    {
+      "version": "professional",
+      "title": "Luxury Villa in Santa Ponsa | Calvia Property For Sale",
+      "description": "Nestled in the prestigious locale of Santa Ponsa, Calvia, this exceptional villa offers unparalleled luxury and sophisticated living. Boasting 5 bedrooms and 4 bathrooms, this meticulously designed residence spans 400 m2 on a generous 800 m2 plot. \n\nStep inside to discover spacious and light-filled interiors, showcasing modern architectural design and premium finishes. The expansive living areas are perfect for both grand entertaining and intimate family gatherings. The gourmet kitchen is equipped with state-of-the-art appliances and custom cabinetry.\n\nOutside, the meticulously landscaped grounds feature a private swimming pool, offering a serene oasis for relaxation. Multiple terraces provide ample space for al fresco dining and enjoying the stunning Mediterranean climate. This Santa Ponsa villa represents a rare opportunity to own a piece of paradise in one of Mallorca's most sought-after locations. Key features include: expansive plot, private pool, multiple terraces and prime location.",
+      "excerpt": "Luxury 5-bedroom, 4-bathroom villa for sale in Santa Ponsa, Calvia. Features a spacious 400 m2 living area, 800 m2 plot, private pool, and multiple terraces. Prime location in Mallorca. A rare real estate opportunity."
+    },
+    {
+      "version": "funny",
+      "title": "Santa Ponsa Villa: Ditch the Day Job, Embrace Island Life!",
+      "description": "Escape the ordinary and dive headfirst into the good life with this fabulous villa in Santa Ponsa, Calvia! This isn't just a house; it's your ticket to endless sunshine, sangria-soaked sunsets, and bragging rights galore. With 5 bedrooms and 4 bathrooms, there's plenty of room for the whole family. \n\nSpread out in 400 m2 of pure, unadulterated luxury, or take the party outside to your sprawling 800 m2 plot. The kitchen is so fancy, it practically cooks for you (okay, maybe not, but it's close!). \n\nAnd let's talk about the pool – it's the perfect place to perfect your tan and sip on something fruity. Plus, with all those terraces, you'll have more outdoor space than you know what to do with (think: yoga, cocktails, or just plain chilling). This Santa Ponsa gem is calling your name – answer it!",
+      "excerpt": "Santa Ponsa villa for sale! 5 beds, 4 baths, a pool, and enough terrace space to host a small country. Ditch the 9-to-5 and live the island dream. Warning: May cause extreme happiness."
+    },
+    {
+      "version": "call to action",
+      "title": "Santa Ponsa Villa For Sale | Enquire Today!",
+      "description": "Discover your dream home in Santa Ponsa, Calvia! This stunning 5-bedroom, 4-bathroom villa offers the ultimate in luxury and Mediterranean living. Situated on an 800 m2 plot with 400 m2 of living space, this property provides ample room for relaxation and entertainment.\n\nImagine yourself lounging by your private pool, enjoying al fresco dining on one of the many terraces, or hosting unforgettable gatherings in the spacious living areas. This villa is meticulously designed with high-end finishes and modern amenities.\n\nDon't miss this incredible opportunity to own a piece of paradise in Santa Ponsa. Contact us today to schedule a private viewing and experience the luxury for yourself. Your dream home awaits! Key features include: expansive plot, private pool, multiple terraces and prime location.",
+      "excerpt": "Luxury villa for sale in Santa Ponsa, Calvia. 5 bedrooms, 4 bathrooms, private pool, and multiple terraces. Enquire now to arrange a viewing and make this dream"
+    }
+  ]
+}
+```

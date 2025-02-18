@@ -2,7 +2,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import os
 import structlog
-from typing import Dict, Any
+from typing import Dict, List, Any
 from datetime import datetime
 
 # import firebase storage
@@ -147,7 +147,7 @@ class FirebaseService:
             )
             raise
 
-    def update_image_ai_meta(self, property_id: str, image_id: str, ai_response: list[Dict[str, str]]) -> None:
+    def update_image_ai_meta(self, property_id: str, image_id: str, ai_response: List[Dict[str, str]]) -> None:
         """Update the ai_meta field of a property image with new AI responses"""
         try:
             # Get reference to the image document
@@ -184,6 +184,48 @@ class FirebaseService:
         except Exception as e:
             self.logger.error(
                 "ai_meta_update_failed",
+                property_id=property_id,
+                image_id=image_id,
+                error=str(e)
+            )
+            raise
+    
+    def update_property_ai_meta(self, property_id: str, image_id: str, ai_response: List[Dict[str, str]]) -> None:
+        """Update the ai_meta field of a property with new AI responses"""
+        try:
+            # Get reference to the property document
+            property_ref = self.db.collection('properties').document(str(property_id))
+            
+            # Get current property document
+            property_doc = property_ref.get()
+            if not property_doc.exists:
+                raise ValueError(f"Property not found: {property_id}")
+                
+            current_time = datetime.now().isoformat()
+
+            # Get existing responses or start with an empty list
+            current_data = property_doc.to_dict()
+            current_responses = current_data.get('ai_meta', {}).get('responses', [])
+
+            # Add new response at the beginning of the list
+            updated_responses = ai_response + current_responses
+
+            # Update property with AI metadata
+            property_ref.set({
+                'ai_meta': {
+                    'last_generated': current_time,
+                    'image_id': image_id, # need to be added into the responses
+                    'responses': updated_responses
+                }
+            }, merge=True)
+            
+            self.logger.info("property_ai_meta_updated",
+                            property_id=property_id,
+                            image_id=image_id)
+                            
+        except Exception as e:
+            self.logger.error(
+                "property_ai_meta_update_failed",
                 property_id=property_id,
                 image_id=image_id,
                 error=str(e)
