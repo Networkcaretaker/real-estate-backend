@@ -45,12 +45,20 @@ class AIService:
     ) -> str:
         """Build the prompt for property content generation"""
 
+        # Create a formatted example JSON structure
+        example_json = {
+            "version": "version name",
+            "title": "property title",
+            "description": "full description",
+            "excerpt": "brief summary"
+        }
+
         return f'''As a high-end real estate specialist, analyze this {property_type} located in {property_location} and using the image and the information provided, create an engaging title, description and excerpt for this real estate. Highlight key selling points using real estate industry standard terminology, incorporate relevant keywords naturally and maintain a professional tone.
 
         Property Category: {property_type}
         Primary Location: {property_location}
         Property Summary: {property_summary}
-        Property Details: {property_data}
+        Property Details: {json.dumps(property_data, indent=2)}
         Versions Required: {versions}
         Market Position: High-end real estate market
 
@@ -87,16 +95,18 @@ class AIService:
         - Mention key features
         - End with value proposition
 
-        Respond with a JSON array of objects containing: "version": str, "title": str, "description": str, "excerpt": str
+        IMPORTANT: Respond with a JSON array where each object has EXACTLY these fields:
+        {json.dumps(example_json, indent=2)}
+
+        Keep all responses in valid JSON format.
         '''
 
     def _process_ai_request(self, image_url: str, prompt: str) -> List[Dict[str, str]]:
-        """Process the AI request using the provided image and prompt"""
         try:
             # Get image from URL
             self.logger.info("fetching_image", url=image_url)
             response = requests.get(image_url)
-            response.raise_for_status()  # This will raise an HTTPError for bad responses
+            response.raise_for_status()
             
             image = Image.open(BytesIO(response.content))
             self.logger.info("image_fetched_successfully", 
@@ -109,42 +119,43 @@ class AIService:
                 contents=[prompt, image]
             )
             
+            # Fix this logging statement - use key-value pairs for structlog
+            self.logger.info("ai_response_received", response_text=response.text)
+            
             if not response or not response.text:
                 raise ValueError("Empty response from AI service")
 
-            # Clean up response - remove markdown code block syntax
+            # Clean up response
             cleaned_response = response.text.strip()
             if cleaned_response.startswith("```json"):
-                cleaned_response = cleaned_response[7:]  # Remove ```json
+                cleaned_response = cleaned_response[7:]
             if cleaned_response.endswith("```"):
-                cleaned_response = cleaned_response[:-3]  # Remove ```
+                cleaned_response = cleaned_response[:-3]
             cleaned_response = cleaned_response.strip()
             
-            # Log cleaned response for debugging
-            print("Cleaned Response:", cleaned_response)
-                
+            # Log cleaned response
+            self.logger.info("cleaned_response_prepared", response=cleaned_response)
+            
             # Parse response
             result = json.loads(cleaned_response)
-            self.logger.info("ai_content_generated_successfully")
             
             # Validate response format
             if not isinstance(result, list):
                 raise ValueError("Invalid response format - expected array")
                 
+            # Update validation for property content
             for item in result:
-                if not all(key in item for key in ["version", "image_title", "image_description"]):
-                    raise ValueError("Invalid response item format")
+                required_fields = ["version", "title", "description", "excerpt"]
+                if not all(key in item for key in required_fields):
+                    self.logger.error("missing_required_fields", item=item)
+                    raise ValueError(f"Invalid response item format. Required fields: {required_fields}")
             
             return result
 
-        except requests.RequestException as e:
-            self.logger.error("image_fetch_error", 
-                            error=str(e), 
-                            url=image_url)
-            raise ValueError(f"Failed to fetch image: {str(e)}")
         except json.JSONDecodeError as e:
-            self.logger.error("response_parse_error", 
-                            error=str(e))
+            self.logger.error("json_parse_error", 
+                            error=str(e), 
+                            response=cleaned_response)
             raise ValueError(f"Failed to parse AI response: {str(e)}")
         except Exception as e:
             self.logger.error("ai_request_error", 
@@ -214,42 +225,43 @@ class AIService:
             # Get signed URL for the image
             signed_url = self.firebase.get_image_download_url(image_data["urls"]["medium"])
 
-            # Prepare clean property data for prompt
+            # Prepare property information
             property_type = property_data.get("details", {}).get("property_type", "property")
             location = property_data.get("location", {})
             property_location = f"{location.get('town', '')}, {location.get('municipality', '')}"
 
-            # Clean and structure available property data
-            clean_data = {}
-            
-            if property_data.get("details"):
-                clean_data["details"] = {k: v for k, v in property_data["details"].items() if v}
-            
-            if property_data.get("rooms"):
-                clean_data["rooms"] = {k: v for k, v in property_data["rooms"].items() if v}
-                
-            if property_data.get("features"):
-                clean_data["features"] = {k: v for k, v in property_data["features"].items() if v and v != []}
-                
-            if property_data.get("price"):
-                clean_data["price"] = property_data["price"]
+            # Clean and structure property data
+            clean_data = {
+                "details": {k: v for k, v in property_data.get("details", {}).items() if v},
+                "rooms": {k: v for k, v in property_data.get("rooms", {}).items() if v},
+                "features": {k: v for k, v in property_data.get("features", {}).items() if v and v != []},
+                "price": property_data.get("price")
+            }
 
-            # Build prompt with your tested prompt structure
+            # Build prompt
+            self.logger.info("Building prompt with data", 
+                            property_type=property_type,
+                            location=property_location,
+                            versions=versions)
+
             prompt = self._build_property_prompt(
                 property_type=property_type,
                 property_location=property_location,
                 property_data=clean_data,
-                property_summary=property_data["excerpt"], # excerpt from CRM will be used at the moment. To update in future to include summary.
+                property_summary=property_data.get("excerpt", ""),
                 versions=versions
             )
 
+            self.logger.info("Prompt built successfully")
+
             # Process image with signed URL
             response = self._process_ai_request(signed_url, prompt)
+            self.logger.info("AI request processed successfully")
 
             # Save results to property ai_meta in firebase
             self.firebase.update_property_ai_meta(
                 property_id=property_id,
-                image_id=image_id,  # Store which image was used for generation, will need to be attached to each response in future
+                image_id=image_id,
                 ai_response=response
             )
 
